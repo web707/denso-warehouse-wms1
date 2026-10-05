@@ -1,0 +1,21 @@
+DENSO Warehouse WMS v5.3 - QR Center
+
+Kế thừa nguyên v5.2 Multi-Zone. Không đổi nguyên lý phân hàng, Zone, 20 kệ/Zone, tải trọng, nhập Excel, nghiệp vụ kho hay database.
+
+Mới:
+- Nâng QR vị trí thành QR & Barcode Center.
+- Bộ lọc Zone / Kệ / Tầng / Trạng thái / tìm kiếm.
+- 4 nhóm nhãn: QR Zone, QR Kệ, QR Ô, QR PART.
+- Mã vị trí duy nhất theo Zone, ví dụ A-R01-S01.
+- QR Ô mở trang chi tiết vị trí khi quét.
+- Trang chi tiết ô có thao tác nhanh Nhập thêm / Xuất / Điều chuyển / Lịch sử.
+- QR Kệ mở đúng mô hình 3D của kệ; QR Zone mở đúng mô hình Zone; QR PART tìm đúng PART trên kệ.
+- Màu/trạng thái tem theo tải: Trống, Đang sử dụng, Gần đầy, Đầy tải, Quá tải.
+- Label hiển thị PART, mã hàng, số thùng, kg nếu ô đang dùng.
+- Chọn nhiều nhãn / chọn tất cả / bỏ chọn.
+- Khổ tem 50x30, 70x40, 100x60 và A4 nhiều tem.
+- In nhãn hàng loạt và xuất PDF thật bằng jsPDF + html2canvas.
+- Thống kê số nhãn đã in/xuất trên trình duyệt hiện tại.
+- VITE_PUBLIC_APP_URL để QR có thể mở từ điện thoại/LAN/domain thật.
+
+Không có migration database mới.

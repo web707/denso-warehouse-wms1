@@ -1,0 +1,8 @@
+1) Copy .env từ backend v4 sang backend v5.
+2) Backend: npm install
+3) Backend: npm run migration:run (BẮT BUỘC 1 lần)
+4) Backend: npm run start:dev
+5) Frontend: npm install
+6) Frontend: npm run dev
+
+Không chạy seed nếu muốn giữ nguyên dữ liệu hiện tại.

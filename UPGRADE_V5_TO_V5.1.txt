@@ -1,0 +1,19 @@
+DENSO Warehouse WMS v5.1 - Nhập Excel trực tiếp vào mọi kệ
+
+Tính năng mới:
+- Tất cả R01 -> R20 đều có nút: "Nhập hàng vào <tên kệ>".
+- Import từ màn kệ gán PART mới trực tiếp vào kệ đang mở.
+- Sau khi import, hệ thống tự chạy tối ưu vị trí S01-S20.
+- Giữ nguyên chống trùng PART của v5.
+- Không có migration database mới.
+
+Nâng từ v5:
+1. Copy .env cũ sang denso-wms-backend/.env.
+2. npm install ở backend và frontend nếu là thư mục mới.
+3. Backend: npm run start:dev
+4. Frontend: npm run dev
+5. Không bắt buộc chạy migration:run vì v5.1 không đổi schema.
+
+Luồng mới:
+Sơ đồ kho 20 kệ -> mở Rxx -> Nhập hàng vào Rxx -> chọn XLSX -> Xác nhận nhập.
+PART mới sẽ được gán vào đúng Rxx và tối ưu vị trí ngay.

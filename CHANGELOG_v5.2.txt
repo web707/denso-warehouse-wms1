@@ -1,0 +1,16 @@
+DENSO Warehouse WMS v5.2 - Multi-Zone độc lập
+
+- Thiết kế lại Quản lý Zone.
+- ZONE-A/B/C không còn dùng chung 20 kệ để di chuyển qua lại.
+- Mỗi Zone có thể khởi tạo R01-R20 riêng (20 kệ / 400 ô).
+- Mỗi Zone có mô hình kho 3D riêng.
+- Thêm dropdown chuyển nhanh Zone ngay trên màn Sơ đồ kho.
+- Mô hình 3D hiển thị đúng DENSO-WH / ZONE đang xem.
+- Tìm PART chỉ trong Zone hiện tại.
+- Trang Quản lý Zone hiển thị số kệ, kệ có hàng, ô đang dùng, PART, kg.
+- Nút Khởi tạo 20 kệ riêng cho từng Zone.
+- Zone mới được tạo trống, sau đó chủ động khởi tạo 20 kệ.
+- Dashboard bổ sung Tổng quan theo Zone.
+- QR/Barcode thêm zoneCode để tránh trùng R01 giữa nhiều Zone.
+- Giữ toàn bộ chức năng v5.1: 3D rack, tải trọng, cảnh báo, lịch sử, QR, nhập/xuất/điều chuyển, báo cáo, nhập Excel trực tiếp vào mọi kệ.
+- Không có migration database mới.

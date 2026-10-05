@@ -1,0 +1,9 @@
+DENSO Warehouse WMS v5 — Stage 3
+
++ Kế thừa toàn bộ v4.
++ QR cho rack và slot, hỗ trợ in nhãn.
++ Nghiệp vụ nhập kho / xuất kho / điều chuyển.
++ Bảng inventory_transactions để truy vết giao dịch.
++ Quản lý nhiều Zone và phân kệ theo Zone.
++ Báo cáo tồn kho, nghiệp vụ, lọc Zone, CSV, print.
++ Migration 1787100000000-AddStage3InventoryAndZones.

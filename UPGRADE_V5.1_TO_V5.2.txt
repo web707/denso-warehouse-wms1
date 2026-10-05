@@ -1,0 +1,25 @@
+NÂNG TỪ V5.1 LÊN V5.2
+
+1. Giải nén v5.2 ví dụ:
+   D:\DENSO-Warehouse-WMS-v5.2-MultiZone
+
+2. Copy .env:
+   Copy-Item "D:\DENSO-Warehouse-WMS-v5.1-RackImport\denso-wms-backend\.env" "D:\DENSO-Warehouse-WMS-v5.2-MultiZone\denso-wms-backend\.env" -Force
+
+3. Backend:
+   cd "D:\DENSO-Warehouse-WMS-v5.2-MultiZone\denso-wms-backend"
+   npm install
+   npm run start:dev
+
+4. Frontend:
+   cd "D:\DENSO-Warehouse-WMS-v5.2-MultiZone\denso-wms-frontend"
+   npm install
+   npm run dev
+
+Không có migration mới. Nếu database đã chạy v5/v5.1 thì không cần npm run migration:run.
+
+Sử dụng:
+- Vào Quản lý Zone.
+- ZONE-B -> Khởi tạo 20 kệ -> Mở mô hình.
+- ZONE-C làm tương tự.
+- ZONE-A hiện tại và dữ liệu R01/R02 được giữ nguyên.

@@ -1,0 +1,15 @@
+Nâng từ v5.2 lên v5.3
+
+1) Copy .env backend cũ sang denso-wms-backend/.env
+2) npm install trong backend, npm run start:dev
+3) npm install trong frontend, npm run dev
+4) Không cần npm run migration:run vì v5.3 không đổi schema DB.
+
+Để QR quét trên điện thoại khi chạy LAN:
+- Tạo denso-wms-frontend/.env.local
+- Ví dụ: VITE_PUBLIC_APP_URL=http://192.168.1.10:4310
+- Đổi 192.168.1.10 thành IP LAN của máy chạy frontend.
+- Khởi động lại npm run dev.
+
+Nếu triển khai domain thật:
+VITE_PUBLIC_APP_URL=https://ten-mien-cua-ban.example

@@ -1,0 +1,9 @@
+DENSO Warehouse WMS v5.1
+
+- Giữ nguyên toàn bộ WMS v5 / Giai đoạn 1-3.
+- Thêm nút "Nhập hàng vào <tên kệ>" trên màn chi tiết của TẤT CẢ R01-R20.
+- Excel import từ màn kệ sẽ gán PART mới trực tiếp vào chính kệ đang mở.
+- Sau khi import, hệ thống tự chạy tối ưu vị trí S01-S20 theo giới hạn tải trọng.
+- Không cần đi vòng qua Lô linh kiện -> Hàng chờ phân bổ.
+- Duplicate PART vẫn được bỏ qua như cơ chế import hiện tại.
+- Không có migration database mới.
