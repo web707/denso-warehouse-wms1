@@ -42,6 +42,13 @@ function toWarehousePart(p: Part) {
     rackId: p.containerId,
     preferredRackSlot: p.preferredRackSlot,
     colorHex: p.colorHex,
+    lotNumber: p.lotNumber,
+    uomCode: p.uomCode,
+    unitCost: p.unitCost,
+    expirationDate: p.expirationDate,
+    supplierName: p.supplierName,
+    supplierId: p.supplierId,
+    supplierSiteCode: p.supplierSiteCode,
   };
 }
 

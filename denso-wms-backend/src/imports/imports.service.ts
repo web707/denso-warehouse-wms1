@@ -27,6 +27,46 @@ const TEMPLATE_HEADERS = [
   'cartonSizeCm',
 ] as const;
 
+// Cột tùy chọn theo Oracle Fusion Cloud Inventory. Không bắt buộc: file cũ không có các cột này vẫn nhập bình thường.
+const OPTIONAL_FIELDS = [
+  { field: 'lotNumber', aliases: ['LOTNUMBER', 'LOT', 'LOTNO'] },
+  { field: 'uomCode', aliases: ['UOMCODE', 'UOM'] },
+  { field: 'unitCost', aliases: ['UNITCOST', 'COST'] },
+  { field: 'expirationDate', aliases: ['EXPIRATIONDATE', 'EXPIRYDATE', 'EXPDATE'] },
+  { field: 'supplierName', aliases: ['SUPPLIERNAME', 'SUPPLIER'] },
+  { field: 'supplierId', aliases: ['SUPPLIERID'] },
+  { field: 'supplierSiteCode', aliases: ['SUPPLIERSITECODE', 'SUPPLIERSITE'] },
+] as const;
+
+const normHeader = (v: unknown): string => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/** Tìm vị trí các cột tùy chọn trong một hoặc nhiều dòng tiêu đề. */
+function findOptionalColumns(rows: ExcelJS.Row[]): Map<string, number> {
+  const found = new Map<string, number>();
+  for (const row of rows) {
+    row.eachCell((cell, colNumber) => {
+      const key = normHeader(cellText(cell.value));
+      if (!key) return;
+      for (const f of OPTIONAL_FIELDS) {
+        if (!found.has(f.field) && (f.aliases as readonly string[]).includes(key)) {
+          found.set(f.field, colNumber);
+        }
+      }
+    });
+  }
+  return found;
+}
+
+/** Excel lưu ngày dạng Date hoặc số serial; chuẩn hóa về YYYY-MM-DD. */
+function toIsoDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0, 10);
+  const text = cellText(value);
+  if (!text) return null;
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
 interface RawRow {
   row: number;
   values: Record<string, string>;
@@ -64,7 +104,7 @@ export class ImportsService {
   async buildTemplate(): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Import');
-    sheet.addRow(TEMPLATE_HEADERS as unknown as string[]);
+    sheet.addRow([...(TEMPLATE_HEADERS as unknown as string[]), ...OPTIONAL_FIELDS.map((f) => f.field)]);
     sheet.addRow([
       'M91846',
       'PAV',
@@ -78,6 +118,13 @@ export class ImportsService {
       115.5,
       21,
       '45 x 38 x 16',
+      'LOT-2026-001',
+      'EA',
+      12.5,
+      '2027-12-31',
+      'Nhà cung cấp A',
+      1001,
+      'HN-01',
     ]);
     sheet.columns.forEach((col) => (col.width = 16));
     return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -312,6 +359,13 @@ export class ImportsService {
               containerId: forcedRack?.id ?? null,
               preferredRackSlot: null,
               colorHex: nextPartColor(colorCursor++),
+              lotNumber: p.lotNumber ?? null,
+              uomCode: p.uomCode || 'EA',
+              unitCost: p.unitCost !== null && p.unitCost !== undefined ? p.unitCost.toString() : null,
+              expirationDate: p.expirationDate ?? null,
+              supplierName: p.supplierName ?? null,
+              supplierId: p.supplierId ?? null,
+              supplierSiteCode: p.supplierSiteCode ?? null,
             }),
           );
           insertedPartCount++;
@@ -363,6 +417,7 @@ export class ImportsService {
 
   private readRowsStrict(sheet: ExcelJS.Worksheet, headerIndex: Map<string, number>): RawRow[] {
     const rows: RawRow[] = [];
+    const optionalCols = findOptionalColumns([sheet.getRow(1)]);
     for (let r = 2; r <= sheet.rowCount; r++) {
       const row = sheet.getRow(r);
       if (row.cellCount === 0) continue;
@@ -375,7 +430,13 @@ export class ImportsService {
         if (value !== null && value !== undefined && value !== '') hasAny = true;
         values[header] = cellText(value);
       }
-      if (hasAny) rows.push({ row: r, values });
+      if (hasAny) {
+        for (const [field, col] of optionalCols) {
+          const raw = row.getCell(col).value;
+          values[field] = field === 'expirationDate' ? (toIsoDate(raw) ?? '') : cellText(raw);
+        }
+        rows.push({ row: r, values });
+      }
     }
     return rows;
   }
@@ -416,6 +477,10 @@ export class ImportsService {
     //   We replace it with a simpler heuristic: col A of the meta row looks
     //   like a non-empty, non-header order-number string (doesn't equal 'ORDER')
     // ─────────────────────────────────────────────────────────────────────────
+    const optionalCols = findOptionalColumns([
+      sheet.getRow(Math.max(1, columnHeaderRow - 1)),
+      sheet.getRow(columnHeaderRow),
+    ]);
     const metaRow = sheet.getRow(columnHeaderRow + 1);
     const orderNumber = norm(metaRow.getCell(1).value);
     const division = norm(metaRow.getCell(2).value);
@@ -461,9 +526,16 @@ export class ImportsService {
       if (!firstCell) continue;
       if (firstCell.toUpperCase() === 'TOTAL') break;
 
+      const optionalValues: Record<string, string> = {};
+      for (const [field, col] of optionalCols) {
+        const raw = row.getCell(col).value;
+        optionalValues[field] = field === 'expirationDate' ? (toIsoDate(raw) ?? '') : cellText(raw);
+      }
+
       rows.push({
         row: r,
         values: {
+          ...optionalValues,
           orderNumber,
           division,
           destination,
@@ -569,6 +641,13 @@ export class ImportsService {
         cartonLengthMm: toMm(sizeMatch[1]),
         cartonWidthMm: toMm(sizeMatch[2]),
         cartonHeightMm: toMm(sizeMatch[3]),
+        lotNumber: v.lotNumber || null,
+        uomCode: (v.uomCode || 'EA').toUpperCase(),
+        unitCost: v.unitCost ? Number.parseFloat(v.unitCost.replace(',', '.')) || null : null,
+        expirationDate: v.expirationDate || null,
+        supplierName: v.supplierName || null,
+        supplierId: v.supplierId ? Number.parseInt(v.supplierId, 10) || null : null,
+        supplierSiteCode: v.supplierSiteCode || null,
       },
     };
   }

@@ -65,6 +65,13 @@ export class PartsService {
         containerId: null,
         preferredRackSlot: null,
         colorHex: dto.colorHex ?? nextPartColor(existingCount),
+        lotNumber: dto.lotNumber || null,
+        uomCode: dto.uomCode || 'EA',
+        unitCost: dto.unitCost !== undefined && dto.unitCost !== null ? dto.unitCost.toString() : null,
+        expirationDate: dto.expirationDate || null,
+        supplierName: dto.supplierName || null,
+        supplierId: dto.supplierId ?? null,
+        supplierSiteCode: dto.supplierSiteCode || null,
       }),
     );
     await this.history.log(HistoryEventType.PART_ADDED, `Thêm PART ${part.partName}`, {
@@ -79,6 +86,8 @@ export class PartsService {
       ...dto,
       totalWeightKg:
         dto.totalWeightKg !== undefined ? dto.totalWeightKg.toString() : part.totalWeightKg,
+      unitCost:
+        dto.unitCost !== undefined ? (dto.unitCost === null ? null : dto.unitCost.toString()) : part.unitCost,
     });
     const lengthMm = dto.cartonLengthMm ?? part.cartonLengthMm;
     const widthMm = dto.cartonWidthMm ?? part.cartonWidthMm;

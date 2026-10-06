@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SLOTS_PER_RACK, slotCode, slotPosition, summarizeRack } from '@/lib/warehouse';
+import { SLOTS_PER_RACK, slotCode, slotPosition, summarizeRack, zoneShort } from '@/lib/warehouse';
 import { useNavigate } from 'react-router-dom';
 import {
   Boxes,
@@ -49,7 +49,6 @@ const STATUS_LABEL = {
   overload: 'Quá tải',
 };
 
-const zoneShort = (zoneCode) => String(zoneCode || 'ZONE-A').replace(/^ZONE-/i, '');
 const safeText = (value) => String(value || '').trim();
 
 function placementWeight(placement, partsById) {

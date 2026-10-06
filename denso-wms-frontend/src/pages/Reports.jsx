@@ -4,9 +4,10 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveCo
 import { api } from '@/api';
 import { useStore } from '@/lib/store';
 import { fmtDec, fmtNum } from '@/lib/calculations';
-import { RACK_STATUS_META, RACK_STATUS_ORDER, SLOTS_PER_RACK, slotCode, summarizeWarehouse, zoneOf } from '@/lib/warehouse';
+import { RACK_STATUS_META, RACK_STATUS_ORDER, SLOTS_PER_RACK, subinventoryCode, summarizeWarehouse, zoneOf } from '@/lib/warehouse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ExpiryBadge from '@/components/ExpiryBadge';
 import { cn } from '@/lib/utils';
 
 const RANGES = [
@@ -35,9 +36,12 @@ const COLUMNS = [
   { key: 'zone', label: 'Zone' },
   { key: 'rack', label: 'Kệ' },
   { key: 'partName', label: 'PART' },
-  { key: 'productCode', label: 'Mã hàng' },
-  { key: 'slot', label: 'Ô' },
-  { key: 'quantity', label: 'SL', numeric: true },
+  { key: 'productCode', label: 'Item Number' },
+  { key: 'lotNumber', label: 'Lot Number' },
+  { key: 'subinventory', label: 'Subinventory' },
+  { key: 'expirationDate', label: 'Hạn dùng' },
+  { key: 'uomCode', label: 'UOM' },
+  { key: 'quantity', label: 'On-hand', numeric: true },
   { key: 'cartons', label: 'Thùng', numeric: true },
   { key: 'weight', label: 'Kg', numeric: true },
 ];
@@ -46,9 +50,17 @@ const PAGE_SIZE = 50;
 
 function csvEscape(v) { return `"${String(v ?? '').replaceAll('"', '""')}"`; }
 
+// File CSV có thêm các cột Oracle không đủ chỗ hiển thị trên bảng
+const CSV_COLUMNS = [
+  ...COLUMNS,
+  { key: 'unitCost', label: 'UnitCost' },
+  { key: 'supplierName', label: 'SupplierName' },
+  { key: 'supplierSiteCode', label: 'SupplierSiteCode' },
+];
+
 function downloadCsv(rows) {
-  const head = COLUMNS.map((c) => c.label === 'Kg' ? 'Khối lượng kg' : c.label);
-  const body = rows.map((r) => COLUMNS.map((c) => csvEscape(r[c.key])).join(','));
+  const head = CSV_COLUMNS.map((c) => (c.label === 'Kg' ? 'Khối lượng kg' : c.label));
+  const body = rows.map((r) => CSV_COLUMNS.map((c) => csvEscape(r[c.key])).join(','));
   const blob = new Blob(['\ufeff' + [head.join(','), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -123,7 +135,13 @@ export default function Reports() {
           rack: r?.name || '—',
           partName: p.partName,
           productCode: p.productCode || '',
-          slot: Number.isInteger(p.preferredRackSlot) ? slotCode(p.preferredRackSlot) : '—',
+          lotNumber: p.lotNumber || '',
+          subinventory: r ? subinventoryCode(r, p.preferredRackSlot) : '—',
+          expirationDate: p.expirationDate || '',
+          uomCode: p.uomCode || 'EA',
+          unitCost: p.unitCost === '' || p.unitCost === undefined ? '' : p.unitCost,
+          supplierName: p.supplierName || '',
+          supplierSiteCode: p.supplierSiteCode || '',
           quantity: p.quantity || 0,
           cartons: p.cartons || 0,
           weight: p.weight || 0,
@@ -131,7 +149,7 @@ export default function Reports() {
         };
       })
       .filter((r) => (zone === 'ALL' || r.zone === zone)
-        && (!q || `${r.partName} ${r.productCode} ${r.rack} ${r.zone}`.toLowerCase().includes(q)));
+        && (!q || `${r.partName} ${r.productCode} ${r.lotNumber} ${r.supplierName} ${r.rack} ${r.zone}`.toLowerCase().includes(q)));
   }, [parts, rackById, zone, search]);
 
   const sortedRows = useMemo(() => {
@@ -362,7 +380,10 @@ export default function Reports() {
                   <td className="px-3 py-2.5 font-medium">{r.rack}</td>
                   <td className="px-3 py-2.5">{r.partName}</td>
                   <td className="px-3 py-2.5 text-slate-600">{r.productCode}</td>
-                  <td className="px-3 py-2.5">{r.slot}</td>
+                  <td className="px-3 py-2.5 text-slate-600">{r.lotNumber || '—'}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">{r.subinventory}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap"><ExpiryBadge date={r.expirationDate} /></td>
+                  <td className="px-3 py-2.5">{r.uomCode}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(r.quantity)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(r.cartons)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtDec(r.weight, 1)}</td>

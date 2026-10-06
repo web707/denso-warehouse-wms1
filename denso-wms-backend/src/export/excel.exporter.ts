@@ -93,10 +93,18 @@ export class ExcelExporter {
         'Số carton',
         'Wall bắt đầu',
         'Wall kết thúc',
+        'ItemNumber',
+        'LotNumber',
+        'UOMCode',
+        'UnitCost',
+        'ExpirationDate',
+        'SupplierName',
+        'SupplierSiteCode',
       ];
       sheet.getRow(row).font = { bold: true };
       row += 1;
       for (const block of plan.blocks) {
+        const part = partsById.get(block.partId);
         sheet.getRow(row).values = [
           block.partName,
           block.divisionCode,
@@ -105,6 +113,13 @@ export class ExcelExporter {
           block.placedCartonCount,
           fmtRow(block.wallStart),
           fmtRow(block.wallEnd),
+          part?.productCode ?? '',
+          part?.lotNumber ?? '',
+          part?.uomCode ?? '',
+          part?.unitCost ?? '',
+          part?.expirationDate ?? '',
+          part?.supplierName ?? '',
+          part?.supplierSiteCode ?? '',
         ];
         row += 1;
       }

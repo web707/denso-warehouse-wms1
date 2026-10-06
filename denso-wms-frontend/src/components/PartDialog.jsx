@@ -22,7 +22,20 @@ const empty = {
   cartonWidth: '',
   cartonHeight: '',
   rackId: '__none__',
+  lotNumber: '',
+  uomCode: 'EA',
+  unitCost: '',
+  expirationDate: '',
+  supplierName: '',
+  supplierId: '',
+  supplierSiteCode: '',
 };
+
+const UOM_OPTIONS = [
+  { value: 'EA', label: 'EA — cái' },
+  { value: 'KG', label: 'KG — ki-lô-gam' },
+  { value: 'ROLL', label: 'ROLL — cuộn' },
+];
 
 export default function PartDialog({ open, onOpenChange, part, defaultOrderId }) {
   const { orders, racks, addPart, updatePart, assignPart } = useStore();
@@ -40,6 +53,8 @@ export default function PartDialog({ open, onOpenChange, part, defaultOrderId })
         cartonLength: String(part.cartonLength ?? ''),
         cartonWidth: String(part.cartonWidth ?? ''),
         cartonHeight: String(part.cartonHeight ?? ''),
+        unitCost: String(part.unitCost ?? ''),
+        supplierId: String(part.supplierId ?? ''),
       });
     } else {
       setForm({ ...empty, orderId: defaultOrderId || orders[0]?.id || '' });
@@ -75,6 +90,13 @@ export default function PartDialog({ open, onOpenChange, part, defaultOrderId })
       cartonWidth: +form.cartonWidth || 0,
       cartonHeight: +form.cartonHeight || 0,
       rackId: form.rackId === '__none__' ? null : form.rackId,
+      lotNumber: form.lotNumber.trim(),
+      uomCode: form.uomCode || 'EA',
+      unitCost: form.unitCost,
+      expirationDate: form.expirationDate,
+      supplierName: form.supplierName.trim(),
+      supplierId: form.supplierId,
+      supplierSiteCode: form.supplierSiteCode.trim(),
     };
     if (part) {
       await updatePart(part.id, data);
@@ -110,7 +132,7 @@ export default function PartDialog({ open, onOpenChange, part, defaultOrderId })
               <Input value={form.partName} onChange={(e) => set('partName', e.target.value)} placeholder="PART 1" required />
             </div>
             <div className="space-y-1.5">
-              <Label>Mã hàng</Label>
+              <Label>Mã hàng (ItemNumber)</Label>
               <Input value={form.productCode} onChange={(e) => set('productCode', e.target.value)} placeholder="A009" />
             </div>
             <div className="space-y-1.5">
@@ -160,6 +182,45 @@ export default function PartDialog({ open, onOpenChange, part, defaultOrderId })
                 CBM tự tính: {fmtDec(cbmPreview, 3)} m³
               </div>
             )}
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Thông tin tồn kho (theo Oracle)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="lotNumber">Số lô (LotNumber)</Label>
+                <Input id="lotNumber" value={form.lotNumber} onChange={(e) => set('lotNumber', e.target.value)} placeholder="LOT-2026-001" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Đơn vị (UOMCode)</Label>
+                <Select value={form.uomCode} onValueChange={(v) => set('uomCode', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {UOM_OPTIONS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="unitCost">Đơn giá (UnitCost)</Label>
+                <Input id="unitCost" type="number" step="0.01" min="0" value={form.unitCost} onChange={(e) => set('unitCost', e.target.value)} placeholder="12.50" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="expirationDate">Hạn dùng (ExpirationDate)</Label>
+                <Input id="expirationDate" type="date" value={form.expirationDate} onChange={(e) => set('expirationDate', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="supplierName">Nhà cung cấp (SupplierName)</Label>
+                <Input id="supplierName" value={form.supplierName} onChange={(e) => set('supplierName', e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="supplierId">Mã NCC (SupplierId)</Label>
+                <Input id="supplierId" type="number" min="0" step="1" value={form.supplierId} onChange={(e) => set('supplierId', e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-3">
+                <Label htmlFor="supplierSiteCode">Site NCC (SupplierSiteCode)</Label>
+                <Input id="supplierSiteCode" value={form.supplierSiteCode} onChange={(e) => set('supplierSiteCode', e.target.value)} placeholder="HN-01" />
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-slate-100 pt-4 space-y-1.5">

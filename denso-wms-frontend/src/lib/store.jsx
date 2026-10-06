@@ -23,6 +23,13 @@ function toParts(rawParts) {
     rackId: p.rackId,
     preferredRackSlot: p.preferredRackSlot,
     color: p.colorHex,
+    lotNumber: p.lotNumber || '',
+    uomCode: p.uomCode || 'EA',
+    unitCost: p.unitCost === null || p.unitCost === undefined ? '' : Number(p.unitCost),
+    expirationDate: p.expirationDate ? String(p.expirationDate).slice(0, 10) : '',
+    supplierName: p.supplierName || '',
+    supplierId: p.supplierId ?? '',
+    supplierSiteCode: p.supplierSiteCode || '',
   }));
 }
 
@@ -141,6 +148,13 @@ export function StoreProvider({ children }) {
       cartonLengthMm: Math.round((+data.cartonLength || 0) * 10),
       cartonWidthMm: Math.round((+data.cartonWidth || 0) * 10),
       cartonHeightMm: Math.round((+data.cartonHeight || 0) * 10),
+      lotNumber: data.lotNumber || null,
+      uomCode: data.uomCode || 'EA',
+      unitCost: data.unitCost === '' || data.unitCost === undefined || data.unitCost === null ? null : +data.unitCost,
+      expirationDate: data.expirationDate || null,
+      supplierName: data.supplierName || null,
+      supplierId: data.supplierId === '' || data.supplierId === undefined || data.supplierId === null ? null : Math.round(+data.supplierId),
+      supplierSiteCode: data.supplierSiteCode || null,
     };
   }
 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRightLeft, CheckCircle2, MapPinned, QrCode, Warehouse } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { calcPartCbm, fmtDec, fmtNum } from '@/lib/calculations';
-import { RACK_STATUS_META, RACK_STATUS_ORDER, SLOTS_PER_RACK, summarizeWarehouse } from '@/lib/warehouse';
+import { RACK_STATUS_META, RACK_STATUS_ORDER, SLOTS_PER_RACK, expiryInfo, summarizeWarehouse } from '@/lib/warehouse';
 import UtilizationBar from '@/components/UtilizationBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,15 +59,28 @@ export default function Dashboard() {
 
   const zones = wh.zones;
 
+  const expiry = useMemo(() => {
+    const expired = [];
+    const soon = [];
+    parts.forEach((p) => {
+      const info = expiryInfo(p.expirationDate);
+      if (info?.status === 'expired') expired.push(p);
+      else if (info?.status === 'soon') soon.push(p);
+    });
+    return { expired, soon };
+  }, [parts]);
+
   const alerts = useMemo(() => {
     const over = wh.racks.filter((r) => r.status === 'overload');
     const near = wh.racks.filter((r) => r.status === 'near' || r.status === 'full');
     const list = [];
     if (over.length) list.push({ tone: 'red', text: `${over.length} kệ quá tải`, hint: over.slice(0, 3).map((r) => r.rack.name).join(', '), to: `/racks/${over[0].rack.id}/plan` });
     if (near.length) list.push({ tone: 'amber', text: `${near.length} kệ gần đầy hoặc đầy`, hint: near.slice(0, 3).map((r) => r.rack.name).join(', '), to: `/racks/${near[0].rack.id}/plan` });
+    if (expiry.expired.length) list.push({ tone: 'red', text: `${expiry.expired.length} PART đã hết hạn`, hint: expiry.expired.slice(0, 3).map((p) => p.partName).join(', '), to: `/orders/${expiry.expired[0].orderId}` });
+    if (expiry.soon.length) list.push({ tone: 'amber', text: `${expiry.soon.length} PART sắp hết hạn (≤ 30 ngày)`, hint: expiry.soon.slice(0, 3).map((p) => p.partName).join(', '), to: `/orders/${expiry.soon[0].orderId}` });
     if (stats.unallocatedCount) list.push({ tone: 'amber', text: `${fmtNum(stats.unallocatedCount)} PART chưa xếp kệ`, hint: `${fmtDec(stats.unallocatedCbm, 2)} m³ đang chờ`, to: '/orders' });
     return list;
-  }, [wh, stats]);
+  }, [wh, stats, expiry]);
 
   const watchList = useMemo(
     () => wh.racks.filter((r) => r.partCount > 0).sort((a, b) => b.loadPct - a.loadPct).slice(0, 8),
@@ -121,7 +134,7 @@ export default function Dashboard() {
             Không có kệ quá tải và mọi PART đã có vị trí.
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {alerts.map((a) => (
               <Link
                 key={a.text}

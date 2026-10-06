@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ExpiryBadge from '@/components/ExpiryBadge';
 import { ArrowLeft, Pencil, Trash2, MoreVertical, PackagePlus, Search, Upload, ArrowRight } from 'lucide-react';
 
 // A dedicated page per order (not a same-page reveal) — every action here
@@ -39,6 +40,8 @@ export default function OrderDetail() {
       (p) =>
         p.partName?.toLowerCase().includes(q) ||
         p.productCode?.toLowerCase().includes(q) ||
+        p.lotNumber?.toLowerCase().includes(q) ||
+        p.supplierName?.toLowerCase().includes(q) ||
         p.masterPo?.toLowerCase().includes(q),
     );
   }, [orderParts, search]);
@@ -134,11 +137,13 @@ export default function OrderDetail() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-left">
                 <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">PART</th>
-                <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Mã hàng</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Item Number</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Lot Number</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Division</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">DC Prefix</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Master PO</th>
-                <th className="px-4 py-3 font-semibold text-slate-600 text-right whitespace-nowrap">SL (PCS)</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 text-right whitespace-nowrap">Số lượng</th>
+                <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Hạn dùng</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 text-right whitespace-nowrap">Trọng lượng</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 text-right whitespace-nowrap">Thùng</th>
                 <th className="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">Kích thước (cm)</th>
@@ -149,7 +154,7 @@ export default function OrderDetail() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="px-4 py-12 text-center text-slate-400">Không có hàng hóa nào.</td></tr>
+                <tr><td colSpan={14} className="px-4 py-12 text-center text-slate-400">Không có hàng hóa nào.</td></tr>
               )}
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition">
@@ -160,12 +165,14 @@ export default function OrderDetail() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.productCode}</td>
+                  <td className="px-4 py-3 text-slate-600 tabular-nums">{p.lotNumber || '—'}</td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" className="text-xs font-semibold">{p.divisionCode || '—'}</Badge>
                   </td>
                   <td className="px-4 py-3 text-slate-600 tabular-nums">{p.dcPrefix || '—'}</td>
                   <td className="px-4 py-3 text-slate-600 tabular-nums">{p.masterPo || '—'}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{fmtNum(p.quantity)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{fmtNum(p.quantity)} <span className="text-xs text-slate-400">{p.uomCode}</span></td>
+                  <td className="px-4 py-3 whitespace-nowrap"><ExpiryBadge date={p.expirationDate} /></td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">{fmtKg(p.weight)}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700">{p.cartons}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{p.cartonLength} × {p.cartonWidth} × {p.cartonHeight}</td>

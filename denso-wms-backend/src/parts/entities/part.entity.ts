@@ -81,4 +81,31 @@ export class Part extends BaseEntity {
 
   @Column({ name: 'color_hex' })
   colorHex: string;
+
+  // ── Trường theo Oracle Fusion Cloud Inventory (Khâu 2) ──
+  // LotNumber: số lô (liên kết với Khâu 3, 4)
+  @Index()
+  @Column({ name: 'lot_number', type: 'varchar', nullable: true })
+  lotNumber: string | null;
+
+  // UOMCode: đơn vị đo (EA, KG, ROLL...)
+  @Column({ name: 'uom_code', type: 'varchar', default: 'EA' })
+  uomCode: string;
+
+  // UnitCost: giá trị tồn kho trên một đơn vị
+  @Column({ name: 'unit_cost', type: 'numeric', precision: 14, scale: 2, nullable: true })
+  unitCost: string | null;
+
+  // ExpirationDate: hạn sử dụng (YYYY-MM-DD)
+  @Column({ name: 'expiration_date', type: 'date', nullable: true })
+  expirationDate: string | null;
+
+  @Column({ name: 'supplier_name', type: 'varchar', nullable: true })
+  supplierName: string | null;
+
+  @Column({ name: 'supplier_id', type: 'int', nullable: true })
+  supplierId: number | null;
+
+  @Column({ name: 'supplier_site_code', type: 'varchar', nullable: true })
+  supplierSiteCode: string | null;
 }

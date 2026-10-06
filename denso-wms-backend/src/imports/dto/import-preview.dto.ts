@@ -19,6 +19,13 @@ export interface ImportPreviewOrder {
     cartonLengthMm: number;
     cartonWidthMm: number;
     cartonHeightMm: number;
+    lotNumber?: string | null;
+    uomCode?: string;
+    unitCost?: number | null;
+    expirationDate?: string | null;
+    supplierName?: string | null;
+    supplierId?: number | null;
+    supplierSiteCode?: string | null;
   }[];
 }
 

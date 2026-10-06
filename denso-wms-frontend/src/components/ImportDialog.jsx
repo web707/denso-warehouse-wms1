@@ -224,6 +224,7 @@ export default function ImportDialog({ open, onOpenChange, targetOrderId, target
                               <tr key={j} className="border-b border-slate-50">
                                 <td className="px-3 py-1.5 font-medium text-slate-600">{p.partName}</td>
                                 <td className="px-3 py-1.5 text-slate-500">{p.productCode}</td>
+                                <td className="px-3 py-1.5 text-slate-500">{p.lotNumber || ''}</td>
                                 <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">{fmtNum(p.quantityPcs || 0)}</td>
                                 <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">{p.cartonCount} thùng</td>
                                 <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">{fmtNum(p.totalWeightKg || 0)} kg</td>

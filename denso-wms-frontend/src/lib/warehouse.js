@@ -18,6 +18,31 @@ export const LEVELS = RACK_SPEC.levels;
 export const NEAR_FULL_SLOTS = Math.ceil(SLOTS_PER_RACK * RACK_SAFETY.nearRatio);
 
 export const zoneOf = (rack) => rack?.zoneCode || DEFAULT_ZONE;
+export const zoneShort = (zoneCode) => String(zoneCode || DEFAULT_ZONE).replace(/^ZONE-/i, '');
+
+/* ---------- Mã vị trí theo Oracle (SubinventoryCode): A-R01-S05 ---------- */
+
+export function subinventoryCode(rack, slotIndex) {
+  if (!rack) return '';
+  const base = `${zoneShort(rack.zoneCode)}-${rack.name}`;
+  return Number.isInteger(slotIndex) ? `${base}-${slotCode(slotIndex)}` : base;
+}
+
+/* ---------- Hạn dùng (ExpirationDate) ---------- */
+
+export const EXPIRY_WARN_DAYS = 30;
+
+/** Trả về null nếu không có hạn dùng; ngược lại { status: 'expired' | 'soon' | 'ok', days }. */
+export function expiryInfo(expirationDate, now = new Date()) {
+  if (!expirationDate) return null;
+  const end = new Date(`${String(expirationDate).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(end.getTime())) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((end - today) / 86_400_000);
+  if (days < 0) return { status: 'expired', days };
+  if (days <= EXPIRY_WARN_DAYS) return { status: 'soon', days };
+  return { status: 'ok', days };
+}
 
 /* ---------- Mã ô: S01–S20 ---------- */
 
