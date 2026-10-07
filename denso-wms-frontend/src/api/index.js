@@ -101,6 +101,11 @@ export const api = {
   shipments: {
     list: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/shipments${qs ? `?${qs}` : ''}`); },
     create: (body) => request('/shipments', { method: 'POST', body }),
+    // Định dạng JSON của Oracle (16 trường Khâu 5) và EDI cho khách hàng
+    oracleList: () => request('/shipments/oracle'),
+    oracleOne: (id) => request(`/shipments/${id}/oracle`),
+    oracleCreate: (body) => request('/shipments/oracle', { method: 'POST', body }),
+    ediText: (id, standard) => raw(`/shipments/${id}/edi?standard=${standard}`),
     update: (id, body) => request(`/shipments/${id}`, { method: 'PATCH', body }),
     remove: (id) => request(`/shipments/${id}`, { method: 'DELETE' }),
   },

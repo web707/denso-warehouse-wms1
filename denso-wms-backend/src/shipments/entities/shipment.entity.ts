@@ -1,4 +1,4 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Generated, Index } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
 import { numericTransformer } from '../../common/transformers/numeric.transformer';
 
@@ -13,6 +13,12 @@ const qty = { type: 'numeric' as const, precision: 14, scale: 3, transformer: nu
  */
 @Entity('shipments')
 export class Shipment extends BaseEntity {
+  /** Oracle: ShipmentId (số nguyên tự tăng). Khóa chính nội bộ vẫn là uuid. */
+  @Index({ unique: true })
+  @Generated('increment')
+  @Column({ name: 'shipment_id', type: 'int' })
+  shipmentId: number;
+
   @Index({ unique: true })
   @Column({ name: 'shipment_number' })
   shipmentNumber: string;

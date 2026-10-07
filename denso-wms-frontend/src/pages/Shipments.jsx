@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Pencil, Plus, Search, Trash2, Truck, PackageCheck } from 'lucide-react';
+import { Pencil, Plus, Search, Trash2, Truck, PackageCheck, Download, FileJson, FileText, Upload } from 'lucide-react';
 import { api } from '@/api';
 import { fmtNum } from '@/lib/calculations';
 import {
@@ -9,6 +9,9 @@ import {
 } from '@/lib/supplyChain';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { filenameFrom, saveFile } from '@/lib/download';
+import OracleImportDialog from '@/components/OracleImportDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import Pill from '@/components/Pill';
@@ -93,6 +96,7 @@ export default function Shipments() {
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  const [oracleOpen, setOracleOpen] = useState(false);
 
   const stats = useMemo(() => ({
     waiting: rows.filter((r) => r.shipmentStatus === 'RELEASED').length,
@@ -128,6 +132,25 @@ export default function Shipments() {
     }
   };
 
+  const exportJson = async (one) => {
+    try {
+      const data = one ? await api.shipments.oracleOne(one.id) : await api.shipments.oracleList();
+      saveFile(JSON.stringify(data, null, 2), one ? `${one.shipmentNumber}.json` : 'shipments-oracle.json', 'application/json');
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Không xuất được JSON', description: e.message });
+    }
+  };
+
+  const exportEdi = async (s, standard) => {
+    try {
+      const res = await api.shipments.ediText(s.id, standard);
+      saveFile(await res.text(), filenameFrom(res, `${s.shipmentNumber}.${standard === 'edifact' ? 'edi' : 'x12'}`));
+      toast({ title: 'Đã tạo file EDI', description: `${s.shipmentNumber} · ${standard === 'edifact' ? 'EDIFACT DESADV D.96A' : 'X12 856 ASN'} · cờ thử nghiệm` });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Không tạo được file EDI', description: e.message });
+    }
+  };
+
   const remove = async () => {
     try {
       await api.shipments.remove(toDelete.id);
@@ -146,11 +169,15 @@ export default function Shipments() {
           <h1 className="text-2xl font-semibold text-slate-900">Giao hàng</h1>
           <p className="text-sm text-slate-500 mt-1">Lô giao cho khách (Shipment) · Khâu 5 · Oracle Fusion Shipping</p>
         </div>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Thêm lô giao</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setOracleOpen(true)}><Upload className="w-4 h-4 mr-2" />Nhập JSON Oracle</Button>
+          <Button variant="outline" onClick={() => exportJson(null)}><Download className="w-4 h-4 mr-2" />Xuất JSON Oracle</Button>
+          <Button onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="w-4 h-4 mr-2" />Thêm lô giao</Button>
+        </div>
       </div>
 
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
-        Lưu ý: định dạng Khâu 5 đã được xác nhận, nhưng các trường chi tiết là dữ liệu giả lập bám theo chuẩn ngành.
+        Lưu ý: định dạng Khâu 5 (JSON + EDI) đã được xác nhận, các trường chi tiết là dữ liệu giả lập bám theo chuẩn ngành. File EDI xuất ra mang cờ thử nghiệm và cần đối chiếu Implementation Guide của Toyota/Honda trước khi gửi thật.
       </p>
 
       <div className="rounded-xl border border-slate-200 bg-white grid grid-cols-2 lg:grid-cols-4 overflow-hidden [&>*]:border-slate-200 [&>*:nth-child(2n)]:border-l lg:[&>*]:border-l [&>*:first-child]:border-l-0 [&>*:nth-child(n+3)]:border-t lg:[&>*:nth-child(n+3)]:border-t-0">
@@ -201,6 +228,7 @@ export default function Shipments() {
                   <tr key={s.id} className="border-t border-slate-200 align-top">
                     <td className="px-3 py-3">
                       <p className="font-medium text-slate-900 whitespace-nowrap">{s.shipmentNumber}</p>
+                      <p className="text-xs text-slate-400">ID {s.shipmentId}</p>
                       {s.sourceOrderNumber && <p className="text-xs text-slate-500">Đơn: {s.sourceOrderNumber}</p>}
                     </td>
                     <td className="px-3 py-3 text-slate-700">{s.customerName}{s.customerNumber && <p className="text-xs text-slate-400">{s.customerNumber}</p>}</td>
@@ -228,6 +256,18 @@ export default function Shipments() {
                       {s.shipmentStatus === 'SHIPPED' && (
                         <Button variant="outline" size="sm" className="mr-1" onClick={() => advance(s, 'DELIVERED')}><PackageCheck className="w-4 h-4 mr-1.5" />Đã giao</Button>
                       )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" aria-label={`Xuất dữ liệu ${s.shipmentNumber}`}><Download className="w-4 h-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Xuất {s.shipmentNumber}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => exportJson(s)}><FileJson className="w-4 h-4 mr-2" />JSON Oracle</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => exportEdi(s, 'x12')}><FileText className="w-4 h-4 mr-2" />EDI X12 856 (ASN)</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => exportEdi(s, 'edifact')}><FileText className="w-4 h-4 mr-2" />EDIFACT DESADV</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button variant="ghost" size="icon" aria-label={`Sửa ${s.shipmentNumber}`} onClick={() => { setEditing(s); setDialogOpen(true); }}><Pencil className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="icon" aria-label={`Xóa ${s.shipmentNumber}`} onClick={() => setToDelete(s)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                     </td>
@@ -249,6 +289,7 @@ export default function Shipments() {
         onSubmit={save}
         submitLabel={editing ? 'Lưu thay đổi' : 'Tạo lô giao'}
       />
+      <OracleImportDialog open={oracleOpen} onOpenChange={setOracleOpen} onDone={refresh} />
       <ConfirmDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}

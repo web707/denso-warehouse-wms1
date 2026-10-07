@@ -110,7 +110,11 @@ function dispatch(action) {
   });
 }
 
-function toast({ ...props }) {
+// Thời gian tự đóng (ms). Thông báo lỗi giữ lâu hơn để kịp đọc. Có thể ghi đè bằng toast({ duration }).
+const AUTO_DISMISS_MS = 5000;
+const AUTO_DISMISS_ERROR_MS = 8000;
+
+function toast({ duration, ...props }) {
   const id = genId();
 
   const update = (props) =>
@@ -133,6 +137,13 @@ function toast({ ...props }) {
       },
     },
   });
+
+  // Toaster hiển thị mọi toast còn trong danh sách nên phải chủ động gỡ, nếu không thông báo
+  // nằm lại mãi ở góc màn hình và che các nút bên dưới.
+  setTimeout(
+    () => dispatch({ type: actionTypes.REMOVE_TOAST, toastId: id }),
+    duration ?? (props.variant === 'destructive' ? AUTO_DISMISS_ERROR_MS : AUTO_DISMISS_MS),
+  );
 
   return {
     id,
