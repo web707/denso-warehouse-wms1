@@ -27,6 +27,10 @@ import QRLabels from '@/pages/QRLabels';
 import LocationDetail from '@/pages/LocationDetail';
 import Zones from '@/pages/Zones';
 import Reports from '@/pages/Reports';
+import WorkOrders from '@/pages/WorkOrders';
+import Inspections from '@/pages/Inspections';
+import Shipments from '@/pages/Shipments';
+import Traceability from '@/pages/Traceability';
 
 function App() {
   return (
@@ -56,6 +60,10 @@ function App() {
                   <Route path="/packing-rules" element={<PackingRules />} />
                   <Route path="/inventory" element={<InventoryOperations />} />
                   <Route path="/qr-labels" element={<QRLabels />} />
+                  <Route path="/work-orders" element={<WorkOrders />} />
+                  <Route path="/inspections" element={<Inspections />} />
+                  <Route path="/shipments" element={<Shipments />} />
+                  <Route path="/trace" element={<Traceability />} />
                   <Route path="/locations/:rackId/:slotCode" element={<LocationDetail />} />
                   <Route path="/zones" element={<Zones />} />
                   <Route path="/reports" element={<Reports />} />

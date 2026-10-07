@@ -436,6 +436,14 @@ export async function seedSampleOrder(dataSource: DataSource): Promise<void> {
         cbm: cbm.toFixed(6),
         containerId: null,
         colorHex: nextPartColor(colorCursor++),
+        // Trường Oracle (Khâu 2): số lô theo mã hàng để liên kết với Khâu 1, 4, 5
+        lotNumber: p.productCode === 'A009' ? 'LOT-2026-001' : 'LOT-2026-002',
+        uomCode: 'EA',
+        unitCost: p.productCode === 'A009' ? '12.50' : '8.75',
+        expirationDate: p.productCode === 'A009' ? '2027-12-31' : null,
+        supplierName: p.productCode === 'A009' ? 'Nhà cung cấp A' : 'Nhà cung cấp B',
+        supplierId: p.productCode === 'A009' ? 1001 : 1002,
+        supplierSiteCode: p.productCode === 'A009' ? 'HN-01' : 'HP-02',
       }),
     );
   }

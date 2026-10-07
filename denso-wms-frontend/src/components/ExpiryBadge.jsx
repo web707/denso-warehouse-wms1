@@ -15,7 +15,7 @@ export default function ExpiryBadge({ date }) {
   const hint = info.status === 'expired' ? `Đã hết hạn ${Math.abs(info.days)} ngày` : info.status === 'soon' ? `Còn ${info.days} ngày` : undefined;
   return (
     <span title={hint} className={cn('inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium tabular-nums', STYLE[info.status])}>
-      {label}{info.status === 'expired' ? ' · hết hạn' : info.status === 'soon' ? ` · còn ${info.days}n` : ''}
+      {label}{info.status === 'expired' ? ' · hết hạn' : info.status === 'soon' ? ` · còn ${info.days} ngày` : ''}
     </span>
   );
 }

@@ -6,6 +6,7 @@ import { seedContainerTypes } from './container-types.seed';
 import { seedDivisions } from './divisions.seed';
 import { seedPackingRules } from './packing-rules.seed';
 import { seedSampleOrder } from './sample-order.seed';
+import { seedSupplyChain } from './supply-chain.seed';
 import { seedTransactionHistory } from './transaction-history.seed';
 
 loadEnv();
@@ -18,6 +19,9 @@ const RESET_TABLES = [
   'containers',
   'history_events',
   'inventory_transactions',
+  'work_orders',
+  'inspections',
+  'shipments',
   'refresh_tokens',
   'password_reset_tokens',
 ];
@@ -68,6 +72,8 @@ async function main() {
 
     if (withSample) {
       await seedSampleOrder(AppDataSource);
+      // Dữ liệu mẫu Khâu 1/4/5 dùng chung số lô với đơn mẫu để thử truy vết
+      await seedSupplyChain(AppDataSource);
     }
 
     if (withTransactions) {

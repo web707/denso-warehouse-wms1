@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowRightLeft, CheckCircle2, MapPinned, QrCode, Warehou
 import { useStore } from '@/lib/store';
 import { calcPartCbm, fmtDec, fmtNum } from '@/lib/calculations';
 import { RACK_STATUS_META, RACK_STATUS_ORDER, SLOTS_PER_RACK, expiryInfo, summarizeWarehouse } from '@/lib/warehouse';
+import { isShipmentLate, isWorkOrderOverdue, lotStatusMap, useLotStatus, useShipments, useWorkOrders } from '@/lib/supplyChain';
 import UtilizationBar from '@/components/UtilizationBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,6 +47,20 @@ export default function Dashboard() {
   const { orders, parts, racks, isLoading } = useStore();
 
   const wh = useMemo(() => summarizeWarehouse(racks, parts), [racks, parts]);
+  const { data: workOrders = [] } = useWorkOrders();
+  const { data: shipments = [] } = useShipments();
+  const { data: lotStatus = [] } = useLotStatus();
+
+  const chain = useMemo(() => {
+    const status = lotStatusMap(lotStatus);
+    const blocked = parts.filter((p) => p.lotNumber && status.get(p.lotNumber) && status.get(p.lotNumber).judgment !== 'OK');
+    return {
+      overdueWo: workOrders.filter((w) => isWorkOrderOverdue(w)),
+      blockedParts: blocked,
+      blockedLot: blocked[0]?.lotNumber,
+      lateShipments: shipments.filter(isShipmentLate),
+    };
+  }, [workOrders, shipments, lotStatus, parts]);
 
   const stats = useMemo(() => ({
     totalCbm: parts.reduce((s, p) => s + calcPartCbm(p), 0),
@@ -78,9 +93,12 @@ export default function Dashboard() {
     if (near.length) list.push({ tone: 'amber', text: `${near.length} kệ gần đầy hoặc đầy`, hint: near.slice(0, 3).map((r) => r.rack.name).join(', '), to: `/racks/${near[0].rack.id}/plan` });
     if (expiry.expired.length) list.push({ tone: 'red', text: `${expiry.expired.length} PART đã hết hạn`, hint: expiry.expired.slice(0, 3).map((p) => p.partName).join(', '), to: `/orders/${expiry.expired[0].orderId}` });
     if (expiry.soon.length) list.push({ tone: 'amber', text: `${expiry.soon.length} PART sắp hết hạn (≤ 30 ngày)`, hint: expiry.soon.slice(0, 3).map((p) => p.partName).join(', '), to: `/orders/${expiry.soon[0].orderId}` });
+    if (chain.blockedParts.length) list.push({ tone: 'red', text: `${chain.blockedParts.length} PART thuộc lô NG/HOLD`, hint: 'Cần cách ly, không xuất đi', to: `/trace?lot=${encodeURIComponent(chain.blockedLot)}` });
+    if (chain.overdueWo.length) list.push({ tone: 'amber', text: `${chain.overdueWo.length} lệnh sản xuất trễ hạn`, hint: chain.overdueWo.slice(0, 3).map((w) => w.workOrderNumber).join(', '), to: '/work-orders' });
+    if (chain.lateShipments.length) list.push({ tone: 'amber', text: `${chain.lateShipments.length} lô giao đang trễ`, hint: chain.lateShipments.slice(0, 3).map((s) => s.shipmentNumber).join(', '), to: '/shipments' });
     if (stats.unallocatedCount) list.push({ tone: 'amber', text: `${fmtNum(stats.unallocatedCount)} PART chưa xếp kệ`, hint: `${fmtDec(stats.unallocatedCbm, 2)} m³ đang chờ`, to: '/orders' });
     return list;
-  }, [wh, stats, expiry]);
+  }, [wh, stats, expiry, chain]);
 
   const watchList = useMemo(
     () => wh.racks.filter((r) => r.partCount > 0).sort((a, b) => b.loadPct - a.loadPct).slice(0, 8),

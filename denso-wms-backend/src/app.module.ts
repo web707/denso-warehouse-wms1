@@ -19,6 +19,9 @@ import { LoadingModule } from './packing/loading.module';
 import { HealthModule } from './health/health.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { WarehouseZonesModule } from './warehouse-zones/warehouse-zones.module';
+import { WorkOrdersModule } from './work-orders/work-orders.module';
+import { InspectionsModule } from './inspections/inspections.module';
+import { ShipmentsModule } from './shipments/shipments.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { WarehouseZonesModule } from './warehouse-zones/warehouse-zones.module';
     HealthModule,
     InventoryModule,
     WarehouseZonesModule,
+    WorkOrdersModule,
+    InspectionsModule,
+    ShipmentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

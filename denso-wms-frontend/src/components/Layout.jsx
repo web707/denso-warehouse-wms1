@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Warehouse, ClipboardList, RotateCcw, History as HistoryIcon,
-  ArrowRightLeft, QrCode, MapPinned, BarChart3, Menu, PanelLeftClose, PanelLeftOpen,
+  ArrowRightLeft, QrCode, MapPinned, BarChart3, Factory, ShieldCheck, Truck, GitBranch, Menu, PanelLeftClose, PanelLeftOpen,
   Sun, Moon, Monitor, LogOut,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -32,6 +32,15 @@ const navGroups = [
       { to: '/racks', label: 'Sơ đồ kho theo Zone', short: 'Sơ đồ kho', icon: Warehouse },
       { to: '/zones', label: 'Quản lý Zone', icon: MapPinned },
       { to: '/packing-rules', label: 'Quy ước lưu kho', icon: ClipboardList },
+    ],
+  },
+  {
+    label: 'Chuỗi cung ứng',
+    items: [
+      { to: '/work-orders', label: 'Kế hoạch sản xuất', short: 'Sản xuất', icon: Factory },
+      { to: '/inspections', label: 'Kiểm tra chất lượng', short: 'Chất lượng', icon: ShieldCheck },
+      { to: '/shipments', label: 'Giao hàng', icon: Truck },
+      { to: '/trace', label: 'Truy vết theo lô', short: 'Truy vết', icon: GitBranch },
     ],
   },
   {

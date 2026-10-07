@@ -83,6 +83,28 @@ export const api = {
     heatmap: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/inventory/heatmap${qs ? `?${qs}` : ''}`); },
   },
 
+  workOrders: {
+    list: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/work-orders${qs ? `?${qs}` : ''}`); },
+    create: (body) => request('/work-orders', { method: 'POST', body }),
+    update: (id, body) => request(`/work-orders/${id}`, { method: 'PATCH', body }),
+    remove: (id) => request(`/work-orders/${id}`, { method: 'DELETE' }),
+  },
+
+  inspections: {
+    list: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/inspections${qs ? `?${qs}` : ''}`); },
+    lotStatus: () => request('/inspections/lot-status'),
+    create: (body) => request('/inspections', { method: 'POST', body }),
+    update: (id, body) => request(`/inspections/${id}`, { method: 'PATCH', body }),
+    remove: (id) => request(`/inspections/${id}`, { method: 'DELETE' }),
+  },
+
+  shipments: {
+    list: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/shipments${qs ? `?${qs}` : ''}`); },
+    create: (body) => request('/shipments', { method: 'POST', body }),
+    update: (id, body) => request(`/shipments/${id}`, { method: 'PATCH', body }),
+    remove: (id) => request(`/shipments/${id}`, { method: 'DELETE' }),
+  },
+
   zones: {
     list: (params = {}) => { const qs = new URLSearchParams(params).toString(); return request(`/warehouse-zones${qs ? `?${qs}` : ''}`); },
     create: (body) => request('/warehouse-zones', { method: 'POST', body }),

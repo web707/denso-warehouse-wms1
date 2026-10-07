@@ -14,6 +14,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ExpiryBadge from '@/components/ExpiryBadge';
+import Pill from '@/components/Pill';
+import { JUDGMENT, lotStatusMap, useLotStatus } from '@/lib/supplyChain';
 import { ArrowLeft, Pencil, Trash2, MoreVertical, PackagePlus, Search, Upload, ArrowRight } from 'lucide-react';
 
 // A dedicated page per order (not a same-page reveal) — every action here
@@ -23,6 +25,8 @@ export default function OrderDetail() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { orders, parts, racks, deletePart, assignPart, deleteOrder } = useStore();
+  const { data: lotStatus = [] } = useLotStatus();
+  const lotQuality = lotStatusMap(lotStatus);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -165,7 +169,12 @@ export default function OrderDetail() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.productCode}</td>
-                  <td className="px-4 py-3 text-slate-600 tabular-nums">{p.lotNumber || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600 tabular-nums whitespace-nowrap">
+                    {p.lotNumber || '—'}
+                    {p.lotNumber && lotQuality.get(p.lotNumber) && (
+                      <Pill tone={JUDGMENT[lotQuality.get(p.lotNumber).judgment].tone} className="ml-2" title={`Kiểm tra ${lotQuality.get(p.lotNumber).inspectionType}`}>{lotQuality.get(p.lotNumber).judgment}</Pill>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline" className="text-xs font-semibold">{p.divisionCode || '—'}</Badge>
                   </td>
