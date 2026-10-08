@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, MoreThanOrEqual, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, FindOptionsWhere, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { Container } from '../containers/entities/container.entity';
 import { Part } from '../parts/entities/part.entity';
 import { CreateInventoryTransactionDto } from './dto/create-inventory-transaction.dto';
 import { QueryHeatmapDto } from './dto/query-heatmap.dto';
 import { InventoryTransaction, InventoryTransactionType } from './entities/inventory-transaction.entity';
+import {
+  Amounts, LoadItem, Stock, assertCapacity, assertInboundLocation, planOutbound, planTransfer, rackLimits,
+} from './inventory.rules';
 
 function cbmFor(part: Part, cartons: number): string {
   return ((part.cartonLengthMm * part.cartonWidthMm * part.cartonHeightMm * cartons) / 1_000_000_000).toFixed(6);
@@ -92,6 +95,7 @@ export class InventoryService {
     @InjectRepository(InventoryTransaction) private readonly transactions: Repository<InventoryTransaction>,
     @InjectRepository(Part) private readonly parts: Repository<Part>,
     @InjectRepository(Container) private readonly racks: Repository<Container>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async list(params: { type?: InventoryTransactionType; orderId?: string; partId?: string; limit?: number }) {
@@ -106,11 +110,19 @@ export class InventoryService {
     });
   }
 
-  private async ensureSlotAvailable(partId: string, rackId: string, slot: number | null | undefined) {
-    const rack = await this.racks.findOne({ where: { id: rackId } });
+  /**
+   * Khóa dòng trong transaction. Luôn khóa PART trước rồi mới tới kệ để hai giao dịch không chờ nhau vòng tròn.
+   * Nhờ vậy hai lệnh xuất cùng một PART chạy lần lượt, và hai PART cùng vào một kệ không lọt cùng một ô.
+   */
+  private async lockRow(em: EntityManager, table: 'parts' | 'containers', id: string): Promise<void> {
+    await em.query(`SELECT id FROM ${table} WHERE id = $1 FOR UPDATE`, [id]);
+  }
+
+  private async ensureSlotAvailable(em: EntityManager, partId: string, rackId: string, slot: number | null | undefined) {
+    const rack = await em.findOne(Container, { where: { id: rackId } });
     if (!rack) throw new NotFoundException({ code: 'RACK_NOT_FOUND', message: 'Không tìm thấy kệ đích' });
     if (slot === null || slot === undefined) return rack;
-    const conflict = await this.parts.findOne({
+    const conflict = await em.findOne(Part, {
       where: { containerId: rackId, preferredRackSlot: slot, id: Not(partId) },
     });
     if (conflict) {
@@ -122,72 +134,119 @@ export class InventoryService {
     return rack;
   }
 
+  private async checkCapacity(em: EntityManager, rack: Container, part: Part, after: LoadItem): Promise<void> {
+    const inRack = await em.find(Part, { where: { containerId: rack.id } });
+    const toLoad = (p: Part): LoadItem => ({ weightKg: Number(p.totalWeightKg), cbm: Number(p.cbm), slot: p.preferredRackSlot });
+    const mine = inRack.find((p) => p.id === part.id);
+    assertCapacity({
+      rackName: rack.name,
+      partName: part.partName,
+      limits: rackLimits(rack),
+      others: inRack.filter((p) => p.id !== part.id).map(toLoad),
+      before: mine ? toLoad(mine) : null,
+      after,
+    });
+  }
+
   async create(dto: CreateInventoryTransactionDto, user: AuthenticatedUser): Promise<InventoryTransaction> {
-    const part = await this.parts.findOne({ where: { id: dto.partId } });
-    if (!part) throw new NotFoundException({ code: 'PART_NOT_FOUND', message: 'Không tìm thấy PART' });
+    return this.dataSource.transaction(async (em) => {
+      await this.lockRow(em, 'parts', dto.partId);
+      const part = await em.findOne(Part, { where: { id: dto.partId } });
+      if (!part) throw new NotFoundException({ code: 'PART_NOT_FOUND', message: 'Không tìm thấy PART' });
 
-    const fromRackId = part.containerId;
-    const fromSlot = part.preferredRackSlot;
-    const qty = Math.max(0, dto.quantityPcs || 0);
-    const cartons = Math.max(0, dto.cartonCount || 0);
-    const weight = Math.max(0, dto.weightKg || 0);
+      const fromRackId = part.containerId;
+      const fromSlot = part.preferredRackSlot;
+      const req: Amounts = {
+        qty: Math.max(0, dto.quantityPcs || 0),
+        cartons: Math.max(0, dto.cartonCount || 0),
+        weight: Math.max(0, dto.weightKg || 0),
+      };
+      const stock: Stock = { quantityPcs: part.quantityPcs, cartonCount: part.cartonCount, weightKg: Number(part.totalWeightKg) };
+      // Số lượng thực sự di chuyển, ghi vào sổ (điều chuyển và xuất hết có thể khác số người dùng nhập)
+      let logged: Amounts = { ...req };
 
-    if (dto.type === InventoryTransactionType.INBOUND) {
-      if (qty === 0 && cartons === 0 && weight === 0) {
-        throw new BadRequestException({ code: 'INBOUND_ZERO', message: 'Nhập kho phải có số lượng, số thùng hoặc khối lượng lớn hơn 0' });
-      }
-      if (dto.toRackId) {
-        await this.ensureSlotAvailable(part.id, dto.toRackId, dto.toSlot);
+      if (dto.type === InventoryTransactionType.INBOUND) {
+        if (req.qty === 0 && req.cartons === 0 && req.weight === 0) {
+          throw new BadRequestException({ code: 'INBOUND_ZERO', message: 'Nhập kho phải có số lượng, số thùng hoặc khối lượng lớn hơn 0' });
+        }
+        assertInboundLocation({ rackId: fromRackId, slot: fromSlot }, { toRackId: dto.toRackId, toSlot: dto.toSlot }, part.partName);
+
+        let rackId = fromRackId;
+        let slot = fromSlot;
+        if (!rackId && dto.toRackId) {
+          rackId = dto.toRackId;
+          slot = dto.toSlot ?? null;
+        } else if (rackId && slot === null && dto.toSlot !== undefined && dto.toSlot !== null) {
+          slot = dto.toSlot;
+        }
+
+        const newCartons = part.cartonCount + req.cartons;
+        if (rackId) {
+          await this.lockRow(em, 'containers', rackId);
+          const rack = await this.ensureSlotAvailable(em, part.id, rackId, slot);
+          await this.checkCapacity(em, rack, part, {
+            weightKg: stock.weightKg + req.weight,
+            cbm: Number(cbmFor(part, newCartons)),
+            slot,
+          });
+        }
+        part.containerId = rackId;
+        part.preferredRackSlot = slot;
+        part.quantityPcs += req.qty;
+        part.cartonCount = newCartons;
+        part.totalWeightKg = (stock.weightKg + req.weight).toFixed(2);
+        part.cbm = cbmFor(part, part.cartonCount);
+      } else if (dto.type === InventoryTransactionType.OUTBOUND) {
+        if (req.qty === 0 && req.cartons === 0 && req.weight === 0) {
+          throw new BadRequestException({ code: 'OUTBOUND_ZERO', message: 'Xuất kho phải có số lượng, số thùng hoặc khối lượng lớn hơn 0' });
+        }
+        const plan = planOutbound(stock, req);
+        part.quantityPcs = plan.after.quantityPcs;
+        part.cartonCount = plan.after.cartonCount;
+        part.totalWeightKg = plan.after.weightKg.toFixed(2);
+        part.cbm = cbmFor(part, part.cartonCount);
+        if (plan.depleted) {
+          part.containerId = null;
+          part.preferredRackSlot = null;
+        }
+        logged = { ...req, weight: plan.loggedWeight };
+      } else if (dto.type === InventoryTransactionType.TRANSFER) {
+        if (!dto.toRackId) {
+          throw new BadRequestException({ code: 'TRANSFER_RACK_REQUIRED', message: 'Điều chuyển cần chọn kệ đích' });
+        }
+        logged = planTransfer(stock, req);
+        await this.lockRow(em, 'containers', dto.toRackId);
+        const rack = await this.ensureSlotAvailable(em, part.id, dto.toRackId, dto.toSlot);
+        await this.checkCapacity(em, rack, part, {
+          weightKg: stock.weightKg,
+          cbm: Number(cbmFor(part, part.cartonCount)),
+          slot: dto.toSlot ?? null,
+        });
         part.containerId = dto.toRackId;
         part.preferredRackSlot = dto.toSlot ?? null;
       }
-      part.quantityPcs += qty;
-      part.cartonCount += cartons;
-      part.totalWeightKg = (Number(part.totalWeightKg) + weight).toFixed(2);
-      part.cbm = cbmFor(part, part.cartonCount);
-    } else if (dto.type === InventoryTransactionType.OUTBOUND) {
-      if (qty === 0 && cartons === 0 && weight === 0) {
-        throw new BadRequestException({ code: 'OUTBOUND_ZERO', message: 'Xuất kho phải có số lượng, số thùng hoặc khối lượng lớn hơn 0' });
-      }
-      if (qty > part.quantityPcs || cartons > part.cartonCount || weight > Number(part.totalWeightKg) + 0.001) {
-        throw new BadRequestException({ code: 'OUTBOUND_EXCEEDS_STOCK', message: 'Số lượng xuất vượt tồn kho hiện tại' });
-      }
-      part.quantityPcs -= qty;
-      part.cartonCount -= cartons;
-      part.totalWeightKg = Math.max(0, Number(part.totalWeightKg) - weight).toFixed(2);
-      part.cbm = cbmFor(part, part.cartonCount);
-      if (part.cartonCount === 0 || part.quantityPcs === 0) {
-        part.containerId = null;
-        part.preferredRackSlot = null;
-      }
-    } else if (dto.type === InventoryTransactionType.TRANSFER) {
-      if (!dto.toRackId) {
-        throw new BadRequestException({ code: 'TRANSFER_RACK_REQUIRED', message: 'Điều chuyển cần chọn kệ đích' });
-      }
-      await this.ensureSlotAvailable(part.id, dto.toRackId, dto.toSlot);
-      part.containerId = dto.toRackId;
-      part.preferredRackSlot = dto.toSlot ?? null;
-    }
 
-    await this.parts.save(part);
-    const tx = await this.transactions.save(this.transactions.create({
-      type: dto.type,
-      partId: part.id,
-      partName: part.partName,
-      productCode: part.productCode,
-      orderId: part.orderId,
-      fromRackId,
-      fromSlot,
-      toRackId: part.containerId,
-      toSlot: part.preferredRackSlot,
-      quantityPcs: qty,
-      cartonCount: cartons,
-      weightKg: weight.toFixed(2),
-      note: dto.note?.trim() || null,
-      performedBy: user?.id || null,
-      performedByEmail: user?.email || null,
-    }));
-    return tx;
+      await em.save(part);
+      return em.save(
+        em.create(InventoryTransaction, {
+          type: dto.type,
+          partId: part.id,
+          partName: part.partName,
+          productCode: part.productCode,
+          orderId: part.orderId,
+          fromRackId,
+          fromSlot,
+          toRackId: part.containerId,
+          toSlot: part.preferredRackSlot,
+          quantityPcs: logged.qty,
+          cartonCount: logged.cartons,
+          weightKg: logged.weight.toFixed(2),
+          note: dto.note?.trim() || null,
+          performedBy: user?.id || null,
+          performedByEmail: user?.email || null,
+        }),
+      );
+    });
   }
 
   async getHeatmap(dto: QueryHeatmapDto = {}): Promise<HeatmapResponse> {

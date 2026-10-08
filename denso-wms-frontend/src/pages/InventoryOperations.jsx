@@ -47,6 +47,18 @@ export default function InventoryOperations() {
     if (quickSlot !== null && quickSlot !== '' && Number.isInteger(Number(quickSlot))) setToSlot(String(Number(quickSlot)));
   }, [quickQuery, parts, racks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const isTransfer = type === 'transfer';
+  const located = !!selected?.rackId;
+  const canPickTarget = isTransfer || (type === 'inbound' && !located);
+  const where = selected ? `${rackById[selected.rackId]?.name || ''} · ${slotName(selected.preferredRackSlot)}` : '';
+
+  const fillAll = () => {
+    if (!selected) return;
+    setQty(String(selected.quantity));
+    setCartons(String(selected.cartons));
+    setWeight(String(selected.weight));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     if (!partId) return;
@@ -55,11 +67,13 @@ export default function InventoryOperations() {
       await api.inventory.create({
         type,
         partId,
-        quantityPcs: Number(qty || 0),
-        cartonCount: Number(cartons || 0),
-        weightKg: Number(weight || 0),
-        toRackId: toRackId || undefined,
-        toSlot: toSlot === '' ? undefined : Number(toSlot),
+        // Điều chuyển luôn chuyển toàn bộ PART nên không gửi số lượng đã nhập dở ở tab khác
+        quantityPcs: isTransfer ? 0 : Number(qty || 0),
+        cartonCount: isTransfer ? 0 : Number(cartons || 0),
+        weightKg: isTransfer ? 0 : Number(weight || 0),
+        // Nhập thêm vào PART đã có vị trí thì cộng tại chỗ, không gửi kệ/ô đích
+        toRackId: canPickTarget ? toRackId || undefined : undefined,
+        toSlot: canPickTarget && toSlot !== '' ? Number(toSlot) : undefined,
         note: note || undefined,
       });
       await Promise.all([resetData(), reloadTx()]);
@@ -102,7 +116,20 @@ export default function InventoryOperations() {
           <label className="text-xs">Khối lượng kg<Input type="number" min="0" step="0.01" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
         </div>}
 
-        {(type === 'transfer' || type === 'inbound') && <div className="grid grid-cols-2 gap-2">
+        {type === 'outbound' && selected && <div className="space-y-2">
+          <Button type="button" variant="outline" size="sm" onClick={fillAll}>Xuất toàn bộ tồn</Button>
+          <p className="text-xs text-slate-500">Số lượng và số thùng phải giảm cùng nhau. Xuất hết cả hai thì PART rời khỏi kệ.</p>
+        </div>}
+
+        {isTransfer && selected && <p className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+          Điều chuyển sẽ chuyển <b>toàn bộ PART</b> ({selected.quantity} cái, {selected.cartons} thùng, {selected.weight.toLocaleString('vi-VN')} kg). Chuyển một phần chưa được hỗ trợ.
+        </p>}
+
+        {type === 'inbound' && located && <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          PART đang ở <b>{where}</b>. Nhập thêm sẽ cộng vào vị trí này. Muốn đổi chỗ, dùng tab Điều chuyển.
+        </p>}
+
+        {canPickTarget && <div className="grid grid-cols-2 gap-2">
           <label className="text-xs">Kệ đích
             <select className="mt-1 w-full h-10 rounded-md border px-2 bg-white" value={toRackId} onChange={(e) => setToRackId(e.target.value)}>
               <option value="">{type === 'inbound' ? 'Giữ vị trí hiện tại' : 'Chọn kệ...'}</option>
